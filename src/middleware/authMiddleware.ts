@@ -11,13 +11,13 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
 
   if (!token) {
     console.log('No token found');
-    return res.sendStatus(401);
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
     if (err) {
       console.log('Token verification failed:', err.message);
-      return res.sendStatus(403);
+      return res.status(403).json({ error: 'Forbidden' });
     }
     // @ts-ignore
     req.user = user;
