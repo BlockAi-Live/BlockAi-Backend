@@ -3,16 +3,72 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
+// User model with relations
 model User {
-  id            String    @id @default(uuid())
-  email         String?   @unique
+  id            String         @id @default(uuid())
+  email         String?        @unique
   passwordHash  String?
-  walletAddress String?   @unique
+  walletAddress String?        @unique
   fullName      String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  billing       BillingState?
+  usageLogs     UsageLog[]
+  payments      Payment[]
+  apiKeys       APIKey[]
+}
+
+// Billing State Logic
+model BillingState {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  plan            String   @default("free") // "free", "pro", "enterprise"
+  tier            String   @default("FREE") // "FREE", "PAID" (redundant but consistent with request)
+  credits         Int      @default(20)
+  dailyUsageCount Int      @default(0)
+  lastResetAt     DateTime @default(now())
+}
+
+// Usage Ledger
+model UsageLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String   // "AI_MESSAGE", "API_REQUEST"
+  cost      Int
+  timestamp DateTime @default(now())
+}
+
+// Detailed Payment Tracking (X402)
+model Payment {
+  id            String   @id @default(uuid())
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id])
+  walletAddress String   // Can be linked even if no user ID yet
+  amount        Float
+  currency      String   @default("USDC")
+  network       String   @default("Base Sepolia")
+  txHash        String   @unique
+  status        String   @default("PENDING") // "PENDING", "COMPLETED", "FAILED"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// API Keys for External Access
+model APIKey {
+  id          String   @id @default(uuid())
+  key         String   @unique @default(uuid()) // The actual secret key
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  name        String?  // e.g. "My production key"
+  usageCount  Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  lastUsedAt  DateTime?
 }
