@@ -61,6 +61,73 @@ export const login = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Login failed' });
   }
 };
+// Wallet Login
+export const walletLogin = async (req: Request, res: Response) => {
+    try {
+        const { walletAddress } = req.body;
+        
+        if (!walletAddress) {
+             return res.status(400).json({ error: "Wallet address is required" });
+        }
+
+        const user = await prisma.user.findUnique({ where: { walletAddress } });
+        
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1d' });
+
+        res.json({ token, user: { id: user.id, email: user.email, fullName: user.fullName, walletAddress: user.walletAddress } });
+    } catch (error) {
+        res.status(500).json({ error: 'Login failed' });
+    }
+};
+
+// Wallet Register
+export const walletRegister = async (req: Request, res: Response) => {
+    try {
+        const { walletAddress, username } = req.body;
+
+         if (!walletAddress || !username) {
+             return res.status(400).json({ error: "Wallet address and username are required" });
+        }
+
+        const existingUser = await prisma.user.findUnique({ where: { walletAddress } });
+        if (existingUser) {
+            return res.status(400).json({ error: "Wallet already registered" });
+        }
+
+        const user = await prisma.user.create({
+            data: {
+                walletAddress,
+                fullName: username,
+                // Generate a placeholder email since it's unique but nullable in logic (though schema says unique?)
+                // Schema: email String? @unique. So null is fine for multiple rows in Postgres? 
+                // Postgres unique index allows multiple NULLs.
+                // But let's check schema again. Yes: email String? @unique.
+                email: null, 
+                passwordHash: null
+            }
+        });
+
+        // Initialize Billing State for new Wallet User
+        await prisma.billingState.create({
+            data: {
+                userId: user.id,
+                plan: "free",
+                credits: 20
+            }
+        });
+
+        const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1d' });
+
+        res.json({ token, user: { id: user.id, email: user.email, fullName: user.fullName, walletAddress: user.walletAddress } });
+
+    } catch (error) {
+         res.status(400).json({ error: error instanceof Error ? error.message : 'Registration failed' });
+    }
+};
 
 export const me = async (req: Request, res: Response) => {
   // @ts-ignore
