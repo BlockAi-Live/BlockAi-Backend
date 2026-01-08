@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -14,13 +14,16 @@ model User {
   passwordHash  String?
   walletAddress String?        @unique
   fullName      String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  points        Int            @default(0)
+  isAccessGranted Boolean      @default(false)
   
   billing       BillingState?
   usageLogs     UsageLog[]
   payments      Payment[]
   apiKeys       APIKey[]
+  
+  updatedAt     DateTime       @updatedAt
+  createdAt     DateTime       @default(now())
 }
 
 // Billing State Logic
@@ -71,4 +74,25 @@ model APIKey {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   lastUsedAt  DateTime?
+}
+
+// Access Control System
+model AccessCode {
+  id        String   @id @default(uuid())
+  code      String   @unique // e.g., "AI-BETA-2024"
+  maxUses   Int      @default(100)
+  usedCount Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Waitlist {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  walletAddress String?
+  telegram      String?
+  twitter       String?
+  reason        String?
+  status        String   @default("PENDING") // "PENDING", "APPROVED", "INVITED"
+  createdAt     DateTime @default(now())
 }

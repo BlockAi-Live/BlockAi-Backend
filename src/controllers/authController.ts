@@ -34,7 +34,13 @@ export const register = async (req: Request, res: Response) => {
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1d' });
 
-    res.json({ token, user: { id: user.id, email: user.email, fullName: user.fullName } });
+    res.json({ token, user: { 
+        id: user.id, 
+        email: user.email, 
+        fullName: user.fullName,
+        points: user.points,
+        isAccessGranted: user.isAccessGranted 
+    } });
   } catch (error) {
     res.status(400).json({ error: error instanceof Error ? error.message : 'Registration failed' });
   }
@@ -56,7 +62,13 @@ export const login = async (req: Request, res: Response) => {
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1d' });
 
-    res.json({ token, user: { id: user.id, email: user.email, fullName: user.fullName } });
+    res.json({ token, user: { 
+        id: user.id, 
+        email: user.email, 
+        fullName: user.fullName, 
+        points: user.points,
+        isAccessGranted: user.isAccessGranted
+    } });
   } catch (error) {
     res.status(500).json({ error: 'Login failed' });
   }
@@ -78,7 +90,14 @@ export const walletLogin = async (req: Request, res: Response) => {
 
         const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1d' });
 
-        res.json({ token, user: { id: user.id, email: user.email, fullName: user.fullName, walletAddress: user.walletAddress } });
+        res.json({ token, user: { 
+            id: user.id, 
+            email: user.email, 
+            fullName: user.fullName, 
+            walletAddress: user.walletAddress,
+            points: user.points,
+            isAccessGranted: user.isAccessGranted
+        } });
     } catch (error) {
         res.status(500).json({ error: 'Login failed' });
     }
@@ -142,7 +161,14 @@ export const me = async (req: Request, res: Response) => {
     return res.status(404).json({ error: 'User not found' });
   }
 
-  res.json({ user: { id: user.id, email: user.email, fullName: user.fullName, walletAddress: user.walletAddress } });
+  res.json({ user: { 
+    id: user.id, 
+    email: user.email, 
+    fullName: user.fullName, 
+    walletAddress: user.walletAddress,
+    points: user.points,
+    isAccessGranted: user.isAccessGranted
+  } });
 };
 
 const updateProfileSchema = z.object({
@@ -179,6 +205,8 @@ export const updateProfile = async (req: Request, res: Response) => {
         email: true,
         fullName: true,
         walletAddress: true,
+        points: true,
+        isAccessGranted: true,
       },
     });
 

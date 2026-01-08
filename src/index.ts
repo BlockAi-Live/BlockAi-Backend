@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
 import aiRoutes from './routes/aiRoutes';
+import accessRoutes from './routes/accessRoutes';
 
 dotenv.config();
 
@@ -14,6 +15,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/v1', aiRoutes);
+app.use('/api/access', accessRoutes);
 
 
 app.get('/', (req, res) => {
