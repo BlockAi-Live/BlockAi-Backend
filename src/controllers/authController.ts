@@ -30,7 +30,7 @@ export const register = async (req: Request, res: Response) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Check for referrer
-    let referrerId = undefined;
+    let referrerId: string | null = null;
     const { referralCode } = req.body;
     if (referralCode) {
         const referrer = await prisma.user.findUnique({ where: { referralCode } });
@@ -134,7 +134,7 @@ export const walletRegister = async (req: Request, res: Response) => {
         }
 
         // Check for referrer
-        let referrerId = undefined;
+        let referrerId: string | null = null;
         const { referralCode } = req.body;
         if (referralCode) {
              const referrer = await prisma.user.findUnique({ where: { referralCode } });
