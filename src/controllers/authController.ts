@@ -15,6 +15,7 @@ const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   fullName: z.string().optional(),
+  referralCode: z.string().optional(),
 });
 
 export const register = async (req: Request, res: Response) => {
@@ -28,11 +29,22 @@ export const register = async (req: Request, res: Response) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Check for referrer
+    let referrerId = undefined;
+    const { referralCode } = req.body;
+    if (referralCode) {
+        const referrer = await prisma.user.findUnique({ where: { referralCode } });
+        if (referrer) {
+            referrerId = referrer.id;
+        }
+    }
+
     const user = await prisma.user.create({
       data: {
         email,
         passwordHash: hashedPassword,
         fullName: fullName ?? null,
+        referrerId: referrerId // Link referrer
       },
     });
 
@@ -121,16 +133,23 @@ export const walletRegister = async (req: Request, res: Response) => {
             return res.status(400).json({ error: "Wallet already registered" });
         }
 
+        // Check for referrer
+        let referrerId = undefined;
+        const { referralCode } = req.body;
+        if (referralCode) {
+             const referrer = await prisma.user.findUnique({ where: { referralCode } });
+             if (referrer) {
+                 referrerId = referrer.id;
+             }
+        }
+
         const user = await prisma.user.create({
             data: {
                 walletAddress,
                 fullName: username,
-                // Generate a placeholder email since it's unique but nullable in logic (though schema says unique?)
-                // Schema: email String? @unique. So null is fine for multiple rows in Postgres? 
-                // Postgres unique index allows multiple NULLs.
-                // But let's check schema again. Yes: email String? @unique.
                 email: null, 
-                passwordHash: null
+                passwordHash: null,
+                referrerId: referrerId // Link referrer
             }
         });
 

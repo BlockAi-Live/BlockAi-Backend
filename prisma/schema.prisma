@@ -17,6 +17,13 @@ model User {
   points        Int            @default(0)
   isAccessGranted Boolean      @default(false)
   
+  // Referral System
+  referralCode  String?        @unique
+  referrerId    String?
+  referrer      User?          @relation("UserReferrals", fields: [referrerId], references: [id])
+  referrals     User[]         @relation("UserReferrals")
+  referralCount Int            @default(0)
+  
   billing       BillingState?
   usageLogs     UsageLog[]
   payments      Payment[]
