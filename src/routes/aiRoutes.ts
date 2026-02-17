@@ -7,7 +7,8 @@ import {
     getprotectedResource, 
     createApiKey, 
     simulatePayment, 
-    getBillingStats 
+    getBillingStats,
+    getActivity
 } from '../controllers/resourceController';
 
 const router = express.Router();
@@ -27,5 +28,8 @@ router.get('/billing', authenticateToken, getBillingStats);
 
 // Payment Simulation - Protected by JWT
 router.post('/payment/simulate', authenticateToken, simulatePayment);
+
+// Recent Activity - Protected by JWT
+router.get('/activity', authenticateToken, getActivity);
 
 export default router;

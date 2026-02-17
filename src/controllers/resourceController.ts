@@ -80,3 +80,18 @@ export const getBillingStats = async (req: Request, res: Response) => {
         payments
     });
 };
+
+// 5. Get Recent Activity
+export const getActivity = async (req: Request, res: Response) => {
+    // @ts-ignore
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const logs = await prisma.usageLog.findMany({
+        where: { userId },
+        orderBy: { timestamp: 'desc' },
+        take: 20,
+    });
+
+    return res.json({ activity: logs });
+};
