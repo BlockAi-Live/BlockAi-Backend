@@ -13,6 +13,7 @@ import {
 import { getNews } from '../controllers/newsController';
 import { smartContract } from '../controllers/smartContractController';
 import { generateNFT, getSignals } from '../controllers/nftController';
+import { analyzeWallet, decodeTx } from '../controllers/walletIntelController';
 
 const router = express.Router();
 
@@ -43,6 +44,12 @@ router.post('/nft/generate', authenticateToken, generateNFT);
 
 // AI Trading Signals - Protected by JWT
 router.get('/signals', authenticateToken, getSignals);
+
+// Wallet Intelligence Scanner - Protected by JWT
+router.post('/wallet-intel', authenticateToken, analyzeWallet);
+
+// Transaction Decoder - Protected by JWT
+router.post('/decode-tx', authenticateToken, decodeTx);
 
 // ChainGPT News Feed - Public
 router.get('/news', getNews);

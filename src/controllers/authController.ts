@@ -48,7 +48,7 @@ export const register = async (req: Request, res: Response) => {
       },
     });
 
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
     res.json({ token, user: { 
         id: user.id, 
@@ -76,7 +76,7 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
     res.json({ token, user: { 
         id: user.id, 
@@ -104,7 +104,7 @@ export const walletLogin = async (req: Request, res: Response) => {
             return res.status(404).json({ error: "User not found" });
         }
 
-        const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1d' });
+        const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
         res.json({ token, user: { 
             id: user.id, 
@@ -162,7 +162,7 @@ export const walletRegister = async (req: Request, res: Response) => {
             }
         });
 
-        const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '1d' });
+        const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
         res.json({ token, user: { id: user.id, email: user.email, fullName: user.fullName, walletAddress: user.walletAddress } });
 
