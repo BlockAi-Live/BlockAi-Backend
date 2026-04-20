@@ -14,6 +14,7 @@ import { getNews } from '../controllers/newsController';
 import { smartContract } from '../controllers/smartContractController';
 import { generateNFT, getSignals } from '../controllers/nftController';
 import { analyzeWallet, decodeTx } from '../controllers/walletIntelController';
+import { getLeaderboard } from '../controllers/leaderboardController';
 
 const router = express.Router();
 
@@ -50,6 +51,9 @@ router.post('/wallet-intel', authenticateToken, analyzeWallet);
 
 // Transaction Decoder - Protected by JWT
 router.post('/decode-tx', authenticateToken, decodeTx);
+
+// Leaderboard - Protected by JWT
+router.get('/leaderboard', authenticateToken, getLeaderboard);
 
 // ChainGPT News Feed - Public
 router.get('/news', getNews);
