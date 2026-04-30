@@ -21,11 +21,12 @@ const limiter = rateLimit({
 	legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
-// Apply the rate limiting middleware to all requests.
-app.use(limiter);
-
+// CORS must be first so rate-limited (429) responses still include CORS headers
 app.use(cors());
 app.use(express.json());
+
+// Apply the rate limiting middleware to all requests.
+app.use(limiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/v1', aiRoutes);
