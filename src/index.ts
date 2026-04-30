@@ -1,15 +1,14 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
 import aiRoutes from './routes/aiRoutes';
 import accessRoutes from './routes/accessRoutes';
 import referralRoutes from './routes/referralRoutes';
+import campaignRoutes from './routes/campaignRoutes';
 
 import rateLimit from 'express-rate-limit';
 
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,7 +31,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/v1', aiRoutes);
 app.use('/api/access', accessRoutes);
 app.use('/api/referrals', referralRoutes);
-
+app.use('/api/campaign', campaignRoutes);
 
 app.get('/', (req, res) => {
   res.send('BlockAI Backend is running');
