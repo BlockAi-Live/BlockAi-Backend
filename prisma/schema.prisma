@@ -66,6 +66,9 @@ model CampaignProgress {
   lastFeedbackWeek    Int  @default(0) // ISO week number of last feedback
   totalXFeedbacks     Int  @default(0) // Max 10 over entire campaign
   
+  // Campaign-only points (separate from user.points for leaderboard isolation)
+  campaignPoints      Int  @default(0)
+  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

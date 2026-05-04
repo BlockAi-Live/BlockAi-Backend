@@ -27,6 +27,8 @@ const ACCESS_CODE_COST = 500;
 const FEEDBACK_X_POINTS = 100;
 const FEEDBACK_COMMUNITY_POINTS = 10;
 const MAX_X_FEEDBACKS = 10;
+const CAMPAIGN_START = new Date('2026-05-03T13:00:00Z');
+const REFERRAL_PERCENT = 0.10;
 
 // ─── HELPERS ───────────────────────────────────────────
 async function getOrCreateProgress(userId: string) {
@@ -37,12 +39,18 @@ async function getOrCreateProgress(userId: string) {
   return progress;
 }
 
-function getISOWeek(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+// Returns campaign week 1-6 (or 0 if before start, 7+ if after)
+function getCampaignWeek(date: Date = new Date()): number {
+  const diffMs = date.getTime() - CAMPAIGN_START.getTime();
+  if (diffMs < 0) return 0;
+  return Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)) + 1;
+}
+
+// Week 1: up to 5 submissions, Weeks 2-6: 1 per week
+function getWeeklyLimit(week: number): number {
+  if (week <= 0) return 0;
+  if (week === 1) return 5;
+  return 1;
 }
 
 // ─── GET CAMPAIGN PROGRESS ─────────────────────────────
@@ -73,6 +81,9 @@ export const getCampaignProgress = async (req: Request, res: Response) => {
       select: { code: true, isUsed: true, type: true, createdAt: true },
     });
 
+    const campaignWeek = getCampaignWeek();
+    const weeklyLimit = getWeeklyLimit(campaignWeek);
+
     return res.json({
       unlockedStage: progress.unlockedStage,
       hasRedeemedCode: progress.hasRedeemedCode,
@@ -80,9 +91,12 @@ export const getCampaignProgress = async (req: Request, res: Response) => {
       completedTasks,
       socialPoints,
       totalPoints: user?.points || 0,
+      campaignPoints: progress.campaignPoints,
       totalXFeedbacks: progress.totalXFeedbacks,
       weeklyFeedbackCount: progress.weeklyFeedbackCount,
       twitterHandle: progress.twitterHandle,
+      campaignWeek,
+      weeklyLimit,
       feedbacks,
       codes,
       sections: SECTIONS,
@@ -290,6 +304,21 @@ export const submitFeedback = async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Maximum X feedbacks reached (10)' });
       }
 
+      // Weekly submission limit: Week 1 = 5, Weeks 2-6 = 1
+      const campaignWeek = getCampaignWeek();
+      const weeklyLimit = getWeeklyLimit(campaignWeek);
+      if (campaignWeek > 0 && weeklyLimit > 0) {
+        // Count submissions (pending + approved) in the current campaign week
+        const weekStart = new Date(CAMPAIGN_START.getTime() + (campaignWeek - 1) * 7 * 24 * 60 * 60 * 1000);
+        const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const weekSubmissions = await prisma.feedbackSubmission.count({
+          where: { userId, platform: 'twitter', createdAt: { gte: weekStart, lt: weekEnd }, status: { in: ['PENDING', 'APPROVED'] } },
+        });
+        if (weekSubmissions >= weeklyLimit) {
+          return res.status(400).json({ error: `You've reached the weekly limit (${weeklyLimit} submission${weeklyLimit > 1 ? 's' : ''} for week ${campaignWeek})` });
+        }
+      }
+
       // Check existing pending/approved feedback for this section on X
       const existingForSection = await prisma.feedbackSubmission.findFirst({
         where: { userId, section, platform: 'twitter', status: { in: ['PENDING', 'APPROVED'] } },
@@ -392,37 +421,54 @@ export const reviewFeedback = async (req: Request, res: Response) => {
         }),
       ];
 
-      // Only unlock next section for X feedback (main channel)
-      if (isXFeedback && nextStage > progress.unlockedStage) {
-        const currentWeek = getISOWeek(new Date());
-        updates.push(
-          prisma.campaignProgress.update({
-            where: { userId: submission.userId },
-            data: {
-              unlockedStage: nextStage,
-              totalXFeedbacks: { increment: 1 },
-              weeklyFeedbackCount: progress.lastFeedbackWeek === currentWeek
-                ? { increment: 1 }
-                : 1,
-              lastFeedbackWeek: currentWeek,
-            },
-          })
-        );
-      } else if (isXFeedback) {
-        // Section already unlocked but still count the X feedback
-        const currentWeek = getISOWeek(new Date());
-        updates.push(
-          prisma.campaignProgress.update({
-            where: { userId: submission.userId },
-            data: {
-              totalXFeedbacks: { increment: 1 },
-              weeklyFeedbackCount: progress.lastFeedbackWeek === currentWeek
-                ? { increment: 1 }
-                : 1,
-              lastFeedbackWeek: currentWeek,
-            },
-          })
-        );
+      // Build campaign progress update data
+      const campaignWeek = getCampaignWeek();
+      const progressData: any = {
+        campaignPoints: { increment: pointsToAward },
+      };
+
+      if (isXFeedback) {
+        progressData.totalXFeedbacks = { increment: 1 };
+        progressData.weeklyFeedbackCount = progress.lastFeedbackWeek === campaignWeek
+          ? { increment: 1 } : 1;
+        progressData.lastFeedbackWeek = campaignWeek;
+
+        // Unlock next section if applicable
+        if (nextStage > progress.unlockedStage) {
+          progressData.unlockedStage = nextStage;
+        }
+      }
+
+      updates.push(
+        prisma.campaignProgress.update({
+          where: { userId: submission.userId },
+          data: progressData,
+        })
+      );
+
+      // Referral 10% kickback — award to referrer if exists
+      const feedbackUser = await prisma.user.findUnique({
+        where: { id: submission.userId },
+        select: { referrerId: true },
+      });
+      if (feedbackUser?.referrerId) {
+        const referralBonus = Math.floor(pointsToAward * REFERRAL_PERCENT);
+        if (referralBonus > 0) {
+          updates.push(
+            prisma.user.update({
+              where: { id: feedbackUser.referrerId },
+              data: { points: { increment: referralBonus } },
+            })
+          );
+          // Also increment referrer's campaignPoints
+          const referrerProgress = await getOrCreateProgress(feedbackUser.referrerId);
+          updates.push(
+            prisma.campaignProgress.update({
+              where: { userId: feedbackUser.referrerId },
+              data: { campaignPoints: { increment: referralBonus } },
+            })
+          );
+        }
       }
 
       await prisma.$transaction(updates);
